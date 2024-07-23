@@ -52,16 +52,18 @@ class CalendarWidget(tk.Tk):
         self.prev_button = tk.Button(self, text="<", command=self.prev_month)
         self.next_button = tk.Button(self, text=">", command=self.next_month)
         self.prev_button.grid(row=0, column=0, padx=10, pady=10)
-        self.next_button.grid(row=0, column=2, padx=10, pady=10)
+        self.next_button.grid(row=0, column=3, padx=10, pady=10)
 
         # 콤보박스 (드롭다운 메뉴) 생성
-        self.month_cb = ttk.Combobox(self, textvariable=self.month_var, values=self.months, state="readonly")
-        self.year_cb = ttk.Combobox(self, textvariable=self.year_var, values=[str(year) for year in range(1900, 2101)], state="readonly")
-        self.month_cb.grid(row=0, column=1, padx=10, pady=10)
-        self.year_cb.grid(row=1, column=1, padx=10, pady=10)
+        self.year_cb = ttk.Combobox(self, textvariable=self.year_var, values=[str(year) for year in range(1900, 2101)], state="readonly", width=7)
+        self.month_cb = ttk.Combobox(self, textvariable=self.month_var, values=self.months, state="readonly", width=5)
 
-        self.month_cb.bind("<<ComboboxSelected>>", lambda event: self.on_combobox_change())
+        self.year_cb.grid(row=0, column=1, padx=5, pady=10)
+        self.month_cb.grid(row=0, column=2, padx=5, pady=10)
+
+
         self.year_cb.bind("<<ComboboxSelected>>", lambda event: self.on_combobox_change())
+        self.month_cb.bind("<<ComboboxSelected>>", lambda event: self.on_combobox_change())
 
         self.calendar_frame = tk.Frame(self)
         self.calendar_frame.grid(row=2, column=0, columnspan=4, padx=10, pady=10, sticky="nsew")
@@ -112,7 +114,18 @@ class CalendarWidget(tk.Tk):
             self.update_calendar()
 
     def save_memo(self, date, memo):
-        self.cursor.execute("REPLACE INTO memos (date, memo) VALUES (?, ?)", (date, memo))
+        # Check if memo exists for the given date
+        self.cursor.execute("SELECT id FROM memos WHERE date = ?", (date,))
+        result = self.cursor.fetchone()
+
+        if result:
+            # Memo exists, update it
+            memo_id = result[0]
+            self.cursor.execute("UPDATE memos SET memo = ? WHERE id = ?", (memo, memo_id))
+        else:
+            # Memo does not exist, insert new memo
+            self.cursor.execute("INSERT INTO memos (date, memo) VALUES (?, ?)", (date, memo))
+
         self.conn.commit()
 
     def get_memo(self, date):
@@ -121,6 +134,7 @@ class CalendarWidget(tk.Tk):
         return result[0] if result else ""
 
     def update_calendar(self):
+
         for widget in self.calendar_frame.winfo_children():
             widget.destroy()
 
